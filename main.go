@@ -10,27 +10,35 @@ import (
 )
 
 func main() {
+	// load current working directory to save as default in directory flag pointer
 	temp, err := os.Getwd()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(2)
 	}
-	// generate flags
+	// generate flags for parsing supported files
 	directoryPathPtr := flag.String("", temp, "Enter the path of the directory you want to minify. Default is current working directory.")
-	phpFlag := flag.Bool("php", false, "PHP")
-	cssFlag := flag.Bool("css", false, "CSS")
-	jsFlag := flag.Bool("js", false, "JS")
-	htmlFlag := flag.Bool("html", false, "HTML")
+	phpFlagPtr := flag.Bool("php", false, "PHP")
+	cssFlagPtr := flag.Bool("css", false, "CSS")
+	jsFlagPtr := flag.Bool("js", false, "JS")
+	htmlFlagPtr := flag.Bool("html", false, "HTML")
 
 	flag.Parse()
 
+	// easy print introduction to program w/ help info
 	printIntro()
-
 	easyPrint("=> Your files are being indexed and located, please wait.")
-	pauseProgram(2)
-	easyPrint("")
-	userVerification("=> Do these files look correct to you? (true / false)")
+	checkDirectoryAndFiles(*phpFlagPtr, *cssFlagPtr, *jsFlagPtr, *htmlFlagPtr, *directoryPathPtr)
 
+}
+
+func checkDirectoryAndFiles(php, css, js, html bool, directoryPath string) {
+	// check if directory exists
+	// start pulling file names on files currently in directory
+	// recursively pull files?
+	pauseProgram(2)
+	filesCorrect := userVerification("=> Do these files look correct to you? (true / false)")
+	fmt.Println(filesCorrect)
 }
 
 //easyPrint is just an easier way to print to console when needed, will expand later.
