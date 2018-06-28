@@ -25,9 +25,11 @@ func main() {
 
 	flag.Parse()
 
-	// easy print introduction to program w/ help info
+	// print introduction to program w/ help info
 	printIntro()
-	easyPrint("=> Your files are being indexed and located, please wait.")
+
+	// start of program process
+	fmt.Println("=> Your files are being indexed and located, please wait.")
 	checkDirectoryAndFiles(*phpFlagPtr, *cssFlagPtr, *jsFlagPtr, *htmlFlagPtr, *directoryPathPtr)
 
 }
@@ -39,11 +41,6 @@ func checkDirectoryAndFiles(php, css, js, html bool, directoryPath string) {
 	pauseProgram(2)
 	filesCorrect := userVerification("=> Do these files look correct to you? (true / false)")
 	fmt.Println(filesCorrect)
-}
-
-//easyPrint is just an easier way to print to console when needed, will expand later.
-func easyPrint(s string) {
-	fmt.Println(s)
 }
 
 //userVerification is meant to be a quick T/F questionnaire for the user for validation.
