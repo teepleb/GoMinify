@@ -53,6 +53,7 @@ func main() {
 
 }
 
+// the core function for file minifications, calls the respective functions accordingly
 func minifyFiles(filePaths []string) {
 	clearTerminal()
 	fmt.Println("=> Starting to minify your files. Please wait.")
@@ -64,6 +65,9 @@ func minifyFiles(filePaths []string) {
 		//if filepath.Ext(element) == ".js" {
 		//	minifyJS(element)
 		//}
+		if filepath.Ext(element) == ".html" {
+			minifyHTML(element)
+		}
 	}
 
 }
@@ -117,6 +121,27 @@ func minifyJS(path string) {
 	saveResource(jsString, fileName)
 }
 
+func minifyHTML(path string) {
+	// todo
+	// - check for comments <!-- --> and //
+	// - skip minimizing <script> </script>
+	fileData := loadResource(path)
+	htmlString := ""
+	//isScript := false
+	fileName := filepath.Base(path[0:len(path)-len(filepath.Ext(path))]) + ".min.js"
+
+	for _, element := range fileData {
+		if strings.HasPrefix(element, "//") {
+			continue
+		}
+
+		htmlString += strings.TrimSpace(element)
+	}
+
+	saveResource(htmlString, fileName)
+}
+
+// saveResource will save off the minified file
 func saveResource(data, fileName string) {
 	if _, err := os.Stat(fileName); os.IsExist(err) {
 		err := os.Remove(fileName)
@@ -140,6 +165,7 @@ func saveResource(data, fileName string) {
 	w.Flush()
 }
 
+// loadResource will load the resource files into a string array line by line
 func loadResource(path string) []string {
 	var tempData []string
 	file, err := os.Open(path)
@@ -156,6 +182,7 @@ func loadResource(path string) []string {
 	return tempData
 }
 
+// getFilePaths will sift through the CWD and sub directories accordingly to build a list of files to minify
 func getFilePaths(extensions map[string]bool, allDirectories bool, directoryPath string) []string {
 	var fileNames []string
 	var directories []string
@@ -222,6 +249,7 @@ func getFilePaths(extensions map[string]bool, allDirectories bool, directoryPath
 	return nil
 }
 
+// getSubDirectories will crawl the subdirectories in the cwd
 func getSubDirectories(currentDirectory string) []string {
 	var subDirectoryList []string
 
