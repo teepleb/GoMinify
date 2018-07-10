@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 func main() {
@@ -69,14 +68,30 @@ func getFilePaths(extensions map[string]bool, allDirectories bool, directoryPath
 			if err != nil {
 				log.Fatal("There was a problem walking the directory: " + path)
 			}
+
 			if info.Mode().IsRegular() {
-				// need to figure out how to cleanly only get extension, no other . in file name
-				temp := strings.Index(path, ".")
-				if temp > 0 {
-					hasExt := checkExtension(path[temp:], extensions)
-					if hasExt == true {
-						fmt.Println(path)
-						fileNames = append(fileNames, path)
+				// need to make sure the path is clean with only the extension being grabbed
+				fileExtension := filepath.Ext(path)
+
+				if len(directories) == 1 {
+					if filepath.Dir(path) == element {
+						if fileExtension != "" {
+							hasExt := checkExtension(fileExtension, extensions)
+							if hasExt == true {
+								fmt.Println(path)
+								fileNames = append(fileNames, path)
+							}
+						}
+					}
+				} else {
+					if fileExtension != "" {
+						hasExt := checkExtension(fileExtension, extensions)
+						if hasExt == true {
+							if !checkFileName(path, fileNames) {
+								fmt.Println(path)
+								fileNames = append(fileNames, path)
+							}
+						}
 					}
 				}
 			}
@@ -124,6 +139,15 @@ func getSubDirectories(currentDirectory string) []string {
 	}
 
 	return subDirectoryList
+}
+
+func checkFileName(path string, filePaths []string) bool {
+	for _, element := range filePaths {
+		if element == path {
+			return true
+		}
+	}
+	return false
 }
 
 func checkExtension(currentFileExt string, extensions map[string]bool) bool {
