@@ -11,6 +11,6 @@ Plan is to build the minification process and then turn it into an executable/CL
 | Open Items  |  Status |
 | ------------ | ------------ |
 | JS Minify  |  In Progress |
-|  CSS Minify |In Progress   |
+|  CSS Minify | Functional   |
 |  HTML Minify |In Progress   |
 |  PHP Minify  | In Progress  |

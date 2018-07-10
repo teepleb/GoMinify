@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 func main() {
@@ -49,6 +51,109 @@ func main() {
 		minifyFiles(filePaths)
 	}
 
+}
+
+func minifyFiles(filePaths []string) {
+	clearTerminal()
+	fmt.Println("=> Starting to minify your files. Please wait.")
+
+	for _, element := range filePaths {
+		if filepath.Ext(element) == ".css" {
+			minifyCSS(element)
+		}
+		//if filepath.Ext(element) == ".js" {
+		//	minifyJS(element)
+		//}
+	}
+
+}
+
+// minifyCSS will minify your CSS files with respect to comments
+func minifyCSS(path string) {
+	fileData := loadResource(path)
+	cssString := ""
+	fileName := filepath.Base(path[0:len(path)-len(filepath.Ext(path))]) + ".min.css"
+	isComment := false
+
+	for _, element := range fileData {
+		if strings.HasPrefix(element, "/*") && strings.HasSuffix(element, "*/") {
+			isComment = false
+			continue
+		} else if strings.HasPrefix(element, "/*") {
+			isComment = true
+			continue
+		} else if strings.HasSuffix(element, "*/") {
+			isComment = false
+			continue
+		}
+
+		if !isComment {
+			cssString += strings.TrimSpace(element)
+		}
+
+	}
+
+	saveResource(cssString, fileName)
+
+}
+
+func minifyJS(path string) {
+	// todo
+	// - handle comments
+	// - check for semi colon, if no semi colon then new line else place together
+	// - only check for semi colon if preceeding is not {
+	// - if next char is } then remove semi-colon before
+	fileData := loadResource(path)
+	jsString := ""
+	fileName := filepath.Base(path[0:len(path)-len(filepath.Ext(path))]) + ".min.js"
+
+	for _, element := range fileData {
+		if !strings.HasPrefix(element, "//") {
+			jsString += strings.TrimSpace(element)
+		}
+
+	}
+
+	saveResource(jsString, fileName)
+}
+
+func saveResource(data, fileName string) {
+	if _, err := os.Stat(fileName); os.IsExist(err) {
+		err := os.Remove(fileName)
+		if err != nil {
+			log.Fatal("There was a problem removing the file from the directory.")
+		}
+	}
+
+	file, err := os.Create(fileName)
+
+	if err != nil {
+		log.Fatal("Error creating minified file.")
+	}
+
+	defer file.Close()
+
+	w := bufio.NewWriter(file)
+
+	w.WriteString(data)
+
+	w.Flush()
+}
+
+func loadResource(path string) []string {
+	var tempData []string
+	file, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		tempData = append(tempData, scanner.Text())
+	}
+
+	return tempData
 }
 
 func getFilePaths(extensions map[string]bool, allDirectories bool, directoryPath string) []string {
@@ -106,6 +211,7 @@ func getFilePaths(extensions map[string]bool, allDirectories bool, directoryPath
 	if len(fileNames) == 0 {
 		log.Fatal("We couldn't find any files with the specified extensions, please navigate to the proper directory or use -all on the command call to search all sub directories as well.")
 	}
+
 	// verify with the user that all files are correct before minifying (last check as a save, just in case)
 	filesCorrect := userVerification("\n\n=> Do these files look correct to you? (true / false)")
 
@@ -114,11 +220,6 @@ func getFilePaths(extensions map[string]bool, allDirectories bool, directoryPath
 	}
 
 	return nil
-}
-
-func minifyFiles(filePaths []string) {
-	clearTerminal()
-	fmt.Println("=> Starting to minify your files. Please wait.")
 }
 
 func getSubDirectories(currentDirectory string) []string {
