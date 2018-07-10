@@ -3,15 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 )
 
 func main() {
+	var filePaths []string
+
 	// load file extension flags
 	phpPtr := flag.Bool("php", false, "Minify files with the .php extension.")
 	cssPtr := flag.Bool("css", false, "Minify files with the .css extension.")
@@ -31,88 +33,47 @@ func main() {
 	// print introduction to program w/ help info
 	printIntro()
 
-	// start of program process
-	checkDirectoryAndFiles(*phpPtr, *cssPtr, *jsPtr, *htmlPtr, *allPtr, dirPath)
+	// generate a map of the extensions for ease of use
+	var extMap = make(map[string]bool)
+	extMap[".php"] = *phpPtr
+	extMap[".css"] = *cssPtr
+	extMap[".js"] = *jsPtr
+	extMap[".html"] = *htmlPtr
+
+	// walk through the CWD to get all the file paths needed to load the files
+	filePaths = getFilePaths(extMap, *allPtr, dirPath)
+
+	if filePaths == nil {
+		log.Fatal("It seems the program wasn't accurately able to find your files, please tell the developer. Thank you.")
+	} else {
+		// start minifying files
+		minifyFiles(filePaths)
+	}
 
 }
 
-func checkDirectoryAndFiles(php, css, js, html, allDirectories bool, directoryPath string) {
-	var fileExtToValidate []string
+func getFilePaths(extensions map[string]bool, allDirectories bool, directoryPath string) []string {
 	var fileNames []string
+	var directories []string
 
-	if php == true {
-		fileExtToValidate = append(fileExtToValidate, ".php")
-	}
-
-	if css == true {
-		fileExtToValidate = append(fileExtToValidate, ".css")
-	}
-
-	if js == true {
-		fileExtToValidate = append(fileExtToValidate, ".js")
-	}
-
-	if html == true {
-		fileExtToValidate = append(fileExtToValidate, ".html")
-	}
-
-	if allDirectories == true {
-
-		clearTerminal()
-		fmt.Println("")
-
-		var subDirectoryList []string
-		err := filepath.Walk(directoryPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				panic(err)
-			}
-			if info.IsDir() {
-				fmt.Println(path)
-				subDirectoryList = append(subDirectoryList, path)
-			}
-			return nil
-		})
-		checkError(err)
-
-		valid := userVerification("\n\n=> Do these directories look correct to you? (true / false)")
-
-		if valid {
-
-			clearTerminal()
-
-			for _, element := range subDirectoryList {
-				err := filepath.Walk(element, func(path string, info os.FileInfo, err error) error {
-					if err != nil {
-						panic(err)
-					}
-					if info.Mode().IsRegular() {
-						temp := strings.Index(path, ".")
-						if temp > 0 {
-							hasExt := checkExtension(path[temp:], fileExtToValidate)
-							if hasExt == true {
-								fmt.Println(path)
-								fileNames = append(fileNames, path)
-							}
-						}
-					}
-					return nil
-				})
-				checkError(err)
-			}
-		} else {
-			fmt.Println("\n\n=> The program has encountered a problem finding all of your sub directories. Please let the developer know, thank you.")
-			os.Exit(0)
-		}
+	// if the user wants all directories to be walked, do so, otherwise only walk the CWD
+	if allDirectories {
+		directories = getSubDirectories(directoryPath)
 	} else {
-		err := filepath.Walk(directoryPath, func(path string, info os.FileInfo, err error) error {
+		directories = append(directories, directoryPath)
+	}
+
+	// walk each directory found/given to snag all the file paths desired
+	for _, element := range directories {
+		err := filepath.Walk(element, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				//todo - don't want to just end program, get user input
-				panic(err)
+				log.Fatal("There was a problem walking the directory: " + path)
 			}
 			if info.Mode().IsRegular() {
+				// need to figure out how to cleanly only get extension, no other . in file name
 				temp := strings.Index(path, ".")
 				if temp > 0 {
-					hasExt := checkExtension(path[temp:], fileExtToValidate)
+					hasExt := checkExtension(path[temp:], extensions)
 					if hasExt == true {
 						fmt.Println(path)
 						fileNames = append(fileNames, path)
@@ -121,28 +82,54 @@ func checkDirectoryAndFiles(php, css, js, html, allDirectories bool, directoryPa
 			}
 			return nil
 		})
-		checkError(err)
+
+		if err != nil {
+			log.Fatal("There was a problem going through the directory looking for files: " + element)
+		}
 	}
 
-	// start pulling file names on files currently in directory
-	// recursively pull files?
-
+	if len(fileNames) == 0 {
+		log.Fatal("We couldn't find any files with the specified extensions, please navigate to the proper directory or use -all on the command call to search all sub directories as well.")
+	}
+	// verify with the user that all files are correct before minifying (last check as a save, just in case)
 	filesCorrect := userVerification("\n\n=> Do these files look correct to you? (true / false)")
 
 	if filesCorrect {
-		clearTerminal()
-		// start minify
-		fmt.Println("=> Starting to minify your files. Please wait.")
-	} else {
-		fmt.Println("It seems the program wasn't accurately able to find your files, please tell the developer. Thank you.")
-		os.Exit(0)
+		return fileNames
 	}
+
+	return nil
 }
 
-func checkExtension(path string, extensions []string) bool {
-	for i := 0; i < len(extensions); i++ {
-		if path == extensions[i] {
-			return true
+func minifyFiles(filePaths []string) {
+	clearTerminal()
+	fmt.Println("=> Starting to minify your files. Please wait.")
+}
+
+func getSubDirectories(currentDirectory string) []string {
+	var subDirectoryList []string
+
+	err := filepath.Walk(currentDirectory, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Fatal(err)
+		}
+		if info.IsDir() {
+			subDirectoryList = append(subDirectoryList, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Fatal("GoMinify had a problem getting the subdirectories in your current working directory.")
+	}
+
+	return subDirectoryList
+}
+
+func checkExtension(currentFileExt string, extensions map[string]bool) bool {
+	for index, element := range extensions {
+		if currentFileExt == index {
+			return element
 		}
 	}
 	return false
@@ -188,13 +175,8 @@ func printIntro() {
 
 func checkError(err error) {
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-}
-
-//pauseProgram is used to slow down the program, if required. It is sometimes used for the user to read prompts as needed.
-func pauseProgram(x int) {
-	time.Sleep(time.Duration(x) * time.Second)
 }
 
 //clearTerminal is pretty self explanatory, it will clear the screen on MacOS, Linux Distros, and Windows.
